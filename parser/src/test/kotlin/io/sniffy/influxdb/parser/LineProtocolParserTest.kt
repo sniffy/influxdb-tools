@@ -28,6 +28,36 @@ internal class LineProtocolParserTest {
     }
 
     @Test
+    fun parseTwoValidLine() {
+        val parser = LineProtocolParser("weather,location=us-midwest temperature=82 1465839830100400200\n" +
+                "weather,location=us-midwest temperature=83 1465839830101400200")
+
+        run {
+            assertTrue(parser.hasNext())
+
+            val point = parser.next()
+
+            assertEquals("weather", point.measurement)
+            assertEquals(mapOf("location" to "us-midwest"), point.tags)
+            assertEquals(mapOf("temperature" to FieldFloatValue(82.0)), point.values)
+            assertEquals(1465839830100400200, point.timestamp)
+        }
+
+        run {
+            assertTrue(parser.hasNext())
+
+            val point = parser.next()
+
+            assertEquals("weather", point.measurement)
+            assertEquals(mapOf("location" to "us-midwest"), point.tags)
+            assertEquals(mapOf("temperature" to FieldFloatValue(83.0)), point.values)
+            assertEquals(1465839830101400200, point.timestamp)
+        }
+
+        assertFalse(parser.hasNext())
+    }
+
+    @Test
     fun hasNextSkippedThrowsException() {
         val parser = LineProtocolParser("weather,location=us-midwest temperature=82 1465839830100400200")
 
