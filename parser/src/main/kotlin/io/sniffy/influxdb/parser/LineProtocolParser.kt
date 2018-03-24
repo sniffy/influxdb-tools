@@ -13,7 +13,7 @@ class LineProtocolParser(private val reader: Reader, private val failFast: Boole
     private val sb = StringBuilder()
     private val sb2 = StringBuilder()
 
-    @Volatile private var nextPoint: Point? = null
+    private var nextPoint: Point? = null
 
     constructor(string: String, failFast: Boolean = false) :
             this(StringReader(string), failFast)
@@ -21,11 +21,13 @@ class LineProtocolParser(private val reader: Reader, private val failFast: Boole
     constructor(inputStream: InputStream, failFast: Boolean = false) :
             this(InputStreamReader(inputStream, Charsets.UTF_8), failFast)
 
+    @Synchronized
     override fun hasNext(): Boolean {
         nextPoint = parseNext()
         return nextPoint != null
     }
 
+    @Synchronized
     override fun next(): Point {
         return nextPoint ?: throw NoSuchElementException()
     }
@@ -61,8 +63,7 @@ class LineProtocolParser(private val reader: Reader, private val failFast: Boole
 
     }
 
-    internal @Synchronized
-    fun parseNext(): Point? {
+    private fun parseNext(): Point? {
 
         val builder = Point.Builder()
 
