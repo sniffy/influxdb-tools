@@ -124,7 +124,7 @@ class LineProtocolParser(reader: Reader, private val failFast: Boolean = false) 
                         }
                         else -> {
                             sb.append(c1)
-                            this
+                            Measurement
                         }
                     }
                 }
@@ -144,7 +144,7 @@ class LineProtocolParser(reader: Reader, private val failFast: Boolean = false) 
                         '\n' -> ErrorInLine
                         '\\' -> {
                             sb.append('\\')
-                            this
+                            MeasurementEscape
                         }
                         ',', ' ' -> {
                             sb.append(c1)
@@ -175,7 +175,7 @@ class LineProtocolParser(reader: Reader, private val failFast: Boolean = false) 
                         '=' -> TagValue
                         else -> {
                             sb.append(c1)
-                            this
+                            TagKey
                         }
                     }
                 }
@@ -186,14 +186,14 @@ class LineProtocolParser(reader: Reader, private val failFast: Boolean = false) 
 
             override fun parse(reader: PushbackReader, sb: StringBuilder, sb2: StringBuilder, builder: Point.Builder): State {
                 val i1 = reader.read()
-                if (i1 < 0) return Eos
+                return if (i1 < 0) Eos
                 else {
                     val c1 = i1.toChar()
-                    return when (c1) {
+                    when (c1) {
                         '\n' -> Error
                         '\\' -> {
                             sb.append('\\')
-                            this
+                            TagKeyEscape
                         }
                         ',', ' ', '=' -> {
                             sb.append(c1)
@@ -212,30 +212,30 @@ class LineProtocolParser(reader: Reader, private val failFast: Boolean = false) 
 
             override fun parse(reader: PushbackReader, sb: StringBuilder, sb2: StringBuilder, builder: Point.Builder): State {
                 val i1 = reader.read()
-                if (i1 < 0) return Eos
+                return if (i1 < 0) Eos
                 else {
                     val c1 = i1.toChar()
                     when (c1) {
-                        '\\' -> return TagValueEscape
+                        '\\' -> TagValueEscape
                         ',', ' ' -> {
                             val tagKey = sb.toString()
                             val tagValue = sb2.toString()
                             sb.setLength(0)
                             sb2.setLength(0)
-                            return if (tagKey.isEmpty() || tagValue.isEmpty()) {
+                            if (tagKey.isEmpty() || tagValue.isEmpty()) {
                                 ErrorInLine // TODO: skip if fail fast
                             } else {
                                 builder.addTag(tagKey, tagValue)
                                 if (',' == c1) TagKey else FieldKey
                             }
                         }
-                        '\n' -> return Error
+                        '\n' -> Error
                         '=' -> {
-                            return ErrorInLine // TODO: read till new Line
+                            ErrorInLine
                         }
                         else -> {
                             sb2.append(c1)
-                            return this
+                            TagValue
                         }
                     }
                 }
@@ -245,14 +245,14 @@ class LineProtocolParser(reader: Reader, private val failFast: Boolean = false) 
 
             override fun parse(reader: PushbackReader, sb: StringBuilder, sb2: StringBuilder, builder: Point.Builder): State {
                 val i1 = reader.read()
-                if (i1 < 0) return Eos
+                return if (i1 < 0) Eos
                 else {
                     val c1 = i1.toChar()
-                    return when (c1) {
+                    when (c1) {
                         '\n' -> Error
                         '\\' -> {
                             sb2.append('\\')
-                            this
+                            TagValueEscape
                         }
                         ',', ' ', '=' -> {
                             sb2.append(c1)
@@ -271,38 +271,43 @@ class LineProtocolParser(reader: Reader, private val failFast: Boolean = false) 
 
             override fun parse(reader: PushbackReader, sb: StringBuilder, sb2: StringBuilder, builder: Point.Builder): State {
                 val i1 = reader.read()
-                if (i1 < 0) return Eos
+                return if (i1 < 0) Eos
                 else {
                     val c1 = i1.toChar()
                     when (c1) {
-                        '\\' -> {
-                            val i2 = reader.read()
-                            return if (i2 < 0) Eos
-                            else {
-                                val c2 = i2.toChar()
-                                when (c2) {
-                                    '\n' -> Error
-                                    ',', ' ', '=' -> {
-                                        sb.append(c2)
-                                        this
-                                    }
-                                    else -> {
-                                        sb.append('\\').append(c2)
-                                        this
-                                    }
-                                }
-                            }
-                        }
-                        '\n' -> return Error
-                        ',', ' ' -> {
-                            return ErrorInLine
-                        }
-                        '=' -> {
-                            return FieldValue
-                        }
+                        '\\' -> FieldKeyEscape
+                        '\n' -> Error
+                        ',', ' ' -> ErrorInLine
+                        '=' -> FieldValue
                         else -> {
                             sb.append(c1)
-                            return this
+                            FieldKey
+                        }
+                    }
+                }
+            }
+
+        },
+        FieldKeyEscape {
+
+            override fun parse(reader: PushbackReader, sb: StringBuilder, sb2: StringBuilder, builder: Point.Builder): State {
+                val i1 = reader.read()
+                return if (i1 < 0) Eos
+                else {
+                    val c1 = i1.toChar()
+                    when (c1) {
+                        '\n' -> Error
+                        '\\' -> {
+                            sb.append('\\')
+                            FieldKeyEscape
+                        }
+                        ',', ' ', '=' -> {
+                            sb.append(c1)
+                            FieldKey
+                        }
+                        else -> {
+                            sb.append('\\').append(c1)
+                            FieldKey
                         }
                     }
                 }
