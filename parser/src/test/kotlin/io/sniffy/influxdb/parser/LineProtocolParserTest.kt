@@ -66,4 +66,63 @@ internal class LineProtocolParserTest {
         })
     }
 
+    @Test
+    fun parseOneLineErrorInMeasurement() {
+        run {
+            val parser = LineProtocolParser(",location=us-midwest temperature=82 1465839830100400200")
+            assertFalse(parser.hasNext())
+        }
+        run {
+            val parser = LineProtocolParser("\n,location=us-midwest temperature=82 1465839830100400200")
+            assertFalse(parser.hasNext())
+        }
+    }
+
+    @Test
+    fun parseOneLineEscapedMeasurement() {
+        run {
+            val parser = LineProtocolParser("\\,,location=us-midwest temperature=82 1465839830100400200")
+            assertTrue(parser.hasNext())
+
+            val point = parser.next()
+
+            assertEquals(",", point.measurement)
+            assertEquals(mapOf("location" to "us-midwest"), point.tags)
+            assertEquals(mapOf("temperature" to FieldFloatValue(82.0)), point.values)
+            assertEquals(1465839830100400200, point.timestamp)
+
+            assertFalse(parser.hasNext())
+        }
+        run {
+
+            val parser = LineProtocolParser("\\ ,location=us-midwest temperature=82 1465839830100400200")
+            assertTrue(parser.hasNext())
+
+            val point = parser.next()
+
+            assertEquals(" ", point.measurement)
+            assertEquals(mapOf("location" to "us-midwest"), point.tags)
+            assertEquals(mapOf("temperature" to FieldFloatValue(82.0)), point.values)
+            assertEquals(1465839830100400200, point.timestamp)
+
+            assertFalse(parser.hasNext())
+        }
+    }
+
+    @Test
+    fun parseValidLineAfterComment() {
+        val parser = LineProtocolParser("#comment\nweather,location=us-midwest temperature=82 1465839830100400200")
+
+        assertTrue(parser.hasNext())
+
+        val point = parser.next()
+
+        assertEquals("weather", point.measurement)
+        assertEquals(mapOf("location" to "us-midwest"), point.tags)
+        assertEquals(mapOf("temperature" to FieldFloatValue(82.0)), point.values)
+        assertEquals(1465839830100400200, point.timestamp)
+
+        assertFalse(parser.hasNext())
+    }
+
 }

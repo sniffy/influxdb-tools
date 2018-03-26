@@ -58,6 +58,7 @@ class LineProtocolParser(private val reader: Reader, private val failFast: Boole
         // TODO: support fail-fast
         // TODO: what about carriage return
         // TODO: what about multiple spaces
+        // TODO: what about two slashes in a row
 
         Beginning {
 
@@ -69,6 +70,25 @@ class LineProtocolParser(private val reader: Reader, private val failFast: Boole
                     when (c1) {
                         '#' -> Comment
                         '\n' -> Beginning
+                        ',', ' ' -> ErrorInLine
+                        '\\' -> {
+                            val i2 = reader.read()
+                            if (i2 < 0) Eos
+                            else {
+                                val c2 = i2.toChar()
+                                when (c2) {
+                                    '\n' -> ErrorInLine
+                                    ',', ' ' -> {
+                                        sb.append(c2)
+                                        Measurement
+                                    }
+                                    else -> {
+                                        sb.append('\\').append(c2)
+                                        Measurement
+                                    }
+                                }
+                            }
+                        }
                         else -> {
                             sb.append(c1)
                             Measurement
