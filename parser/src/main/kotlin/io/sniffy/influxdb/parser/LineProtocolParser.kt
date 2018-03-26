@@ -216,24 +216,7 @@ class LineProtocolParser(reader: Reader, private val failFast: Boolean = false) 
                 else {
                     val c1 = i1.toChar()
                     when (c1) {
-                        '\\' -> {
-                            val i2 = reader.read()
-                            return if (i2 < 0) Eos
-                            else {
-                                val c2 = i2.toChar()
-                                when (c2) {
-                                    '\n' -> Error
-                                    ',', ' ', '=' -> {
-                                        sb2.append(c2)
-                                        this
-                                    }
-                                    else -> {
-                                        sb2.append('\\').append(c2)
-                                        this
-                                    }
-                                }
-                            }
-                        }
+                        '\\' -> return TagValueEscape
                         ',', ' ' -> {
                             val tagKey = sb.toString()
                             val tagValue = sb2.toString()
@@ -253,6 +236,31 @@ class LineProtocolParser(reader: Reader, private val failFast: Boolean = false) 
                         else -> {
                             sb2.append(c1)
                             return this
+                        }
+                    }
+                }
+            }
+        },
+        TagValueEscape {
+
+            override fun parse(reader: PushbackReader, sb: StringBuilder, sb2: StringBuilder, builder: Point.Builder): State {
+                val i1 = reader.read()
+                if (i1 < 0) return Eos
+                else {
+                    val c1 = i1.toChar()
+                    return when (c1) {
+                        '\n' -> Error
+                        '\\' -> {
+                            sb2.append('\\')
+                            this
+                        }
+                        ',', ' ', '=' -> {
+                            sb2.append(c1)
+                            TagValue
+                        }
+                        else -> {
+                            sb2.append('\\').append(c1)
+                            TagValue
                         }
                     }
                 }
