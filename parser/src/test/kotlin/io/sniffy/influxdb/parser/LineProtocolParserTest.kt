@@ -141,4 +141,134 @@ internal class LineProtocolParserTest {
         assertFalse(parser.hasNext())
     }
 
+    @Test
+    fun parseOneLineErrorInTagKey() {
+        run {
+            val parser = LineProtocolParser("weather,loc\nation=us-midwest temperature=82 1465839830100400200")
+            assertFalse(parser.hasNext())
+        }
+        run {
+            val parser = LineProtocolParser("weather,loc ation=us-midwest temperature=82 1465839830100400200")
+            assertFalse(parser.hasNext())
+        }
+        run {
+            val parser = LineProtocolParser("weather,\n=us-midwest temperature=82 1465839830100400200")
+            assertFalse(parser.hasNext())
+        }
+        run {
+            val parser = LineProtocolParser("weather,=us-midwest temperature=82 1465839830100400200")
+            assertFalse(parser.hasNext())
+        }
+        run {
+            val parser = LineProtocolParser("weather,location=us-midwest,\n=bar temperature=82 1465839830100400200")
+            assertFalse(parser.hasNext())
+        }
+        run {
+            val parser = LineProtocolParser("weather,location=us-midwest,=bar temperature=82 1465839830100400200")
+            assertFalse(parser.hasNext())
+        }
+    }
+
+    @Test
+    fun parseOneLineEscapedTagKey() {
+        run {
+            val parser = LineProtocolParser("measurement,loc\\,ation=us-midwest temperature=82 1465839830100400200")
+            assertTrue(parser.hasNext())
+
+            val point = parser.next()
+
+            assertEquals("measurement", point.measurement)
+            assertEquals(mapOf("loc,ation" to "us-midwest"), point.tags)
+            assertEquals(mapOf("temperature" to FieldFloatValue(82.0)), point.values)
+            assertEquals(1465839830100400200, point.timestamp)
+
+            assertFalse(parser.hasNext())
+        }
+
+        run {
+            val parser = LineProtocolParser("measurement,loc\\ ation=us-midwest temperature=82 1465839830100400200")
+            assertTrue(parser.hasNext())
+
+            val point = parser.next()
+
+            assertEquals("measurement", point.measurement)
+            assertEquals(mapOf("loc ation" to "us-midwest"), point.tags)
+            assertEquals(mapOf("temperature" to FieldFloatValue(82.0)), point.values)
+            assertEquals(1465839830100400200, point.timestamp)
+
+            assertFalse(parser.hasNext())
+        }
+
+        run {
+            val parser = LineProtocolParser("measurement,loc\\=ation=us-midwest temperature=82 1465839830100400200")
+            assertTrue(parser.hasNext())
+
+            val point = parser.next()
+
+            assertEquals("measurement", point.measurement)
+            assertEquals(mapOf("loc=ation" to "us-midwest"), point.tags)
+            assertEquals(mapOf("temperature" to FieldFloatValue(82.0)), point.values)
+            assertEquals(1465839830100400200, point.timestamp)
+
+            assertFalse(parser.hasNext())
+        }
+
+        run {
+            val parser = LineProtocolParser("measurement,\\,location=us-midwest temperature=82 1465839830100400200")
+            assertTrue(parser.hasNext())
+
+            val point = parser.next()
+
+            assertEquals("measurement", point.measurement)
+            assertEquals(mapOf(",location" to "us-midwest"), point.tags)
+            assertEquals(mapOf("temperature" to FieldFloatValue(82.0)), point.values)
+            assertEquals(1465839830100400200, point.timestamp)
+
+            assertFalse(parser.hasNext())
+        }
+
+        run {
+            val parser = LineProtocolParser("measurement,\\ location=us-midwest temperature=82 1465839830100400200")
+            assertTrue(parser.hasNext())
+
+            val point = parser.next()
+
+            assertEquals("measurement", point.measurement)
+            assertEquals(mapOf(" location" to "us-midwest"), point.tags)
+            assertEquals(mapOf("temperature" to FieldFloatValue(82.0)), point.values)
+            assertEquals(1465839830100400200, point.timestamp)
+
+            assertFalse(parser.hasNext())
+        }
+
+        run {
+            val parser = LineProtocolParser("measurement,\\=location=us-midwest temperature=82 1465839830100400200")
+            assertTrue(parser.hasNext())
+
+            val point = parser.next()
+
+            assertEquals("measurement", point.measurement)
+            assertEquals(mapOf("=location" to "us-midwest"), point.tags)
+            assertEquals(mapOf("temperature" to FieldFloatValue(82.0)), point.values)
+            assertEquals(1465839830100400200, point.timestamp)
+
+            assertFalse(parser.hasNext())
+        }
+
+        run {
+            val parser = LineProtocolParser("measurement,loc\\\\,ation=us-midwest temperature=82 1465839830100400200")
+            assertTrue(parser.hasNext())
+
+            val point = parser.next()
+
+            assertEquals("measurement", point.measurement)
+            assertEquals(mapOf("loc\\,ation" to "us-midwest"), point.tags)
+            assertEquals(mapOf("temperature" to FieldFloatValue(82.0)), point.values)
+            assertEquals(1465839830100400200, point.timestamp)
+
+            assertFalse(parser.hasNext())
+        }
+
+    }
+
 }

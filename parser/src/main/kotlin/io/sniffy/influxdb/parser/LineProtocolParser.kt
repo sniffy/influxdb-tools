@@ -165,38 +165,43 @@ class LineProtocolParser(reader: Reader, private val failFast: Boolean = false) 
 
             override fun parse(reader: PushbackReader, sb: StringBuilder, sb2: StringBuilder, builder: Point.Builder): State {
                 val i1 = reader.read()
-                if (i1 < 0) return Eos
+                return if (i1 < 0) Eos
                 else {
                     val c1 = i1.toChar()
                     when (c1) {
-                        '\\' -> {
-                            val i2 = reader.read()
-                            return if (i2 < 0) Eos
-                            else {
-                                val c2 = i2.toChar()
-                                when (c2) {
-                                    '\n' -> Error
-                                    ',', ' ', '=' -> {
-                                        sb.append(c2)
-                                        this
-                                    }
-                                    else -> {
-                                        sb.append('\\').append(c2)
-                                        this
-                                    }
-                                }
-                            }
-                        }
-                        '\n' -> return Error
-                        ',', ' ' -> {
-                            return ErrorInLine
-                        }
-                        '=' -> {
-                            return TagValue
-                        }
+                        '\\' -> TagKeyEscape
+                        '\n' -> Error
+                        ',', ' ' -> ErrorInLine
+                        '=' -> TagValue
                         else -> {
                             sb.append(c1)
-                            return this
+                            this
+                        }
+                    }
+                }
+            }
+
+        },
+        TagKeyEscape {
+
+            override fun parse(reader: PushbackReader, sb: StringBuilder, sb2: StringBuilder, builder: Point.Builder): State {
+                val i1 = reader.read()
+                if (i1 < 0) return Eos
+                else {
+                    val c1 = i1.toChar()
+                    return when (c1) {
+                        '\n' -> Error
+                        '\\' -> {
+                            sb.append('\\')
+                            this
+                        }
+                        ',', ' ', '=' -> {
+                            sb.append(c1)
+                            TagKey
+                        }
+                        else -> {
+                            sb.append('\\').append(c1)
+                            TagKey
                         }
                     }
                 }
