@@ -336,28 +336,17 @@ class LineProtocolParser(reader: Reader, private val failFast: Boolean = false) 
 
             override fun parse(reader: PushbackReader, sb: StringBuilder, sb2: StringBuilder, builder: Point.Builder): State {
                 val i1 = reader.read()
-                if (i1 < 0) return Eos
+                return if (i1 < 0) Eos
                 else {
                     val c1 = i1.toChar()
                     when (c1) {
-                        '\\' -> {
-                            val i2 = reader.read()
-                            return if (i2 < 0) Eos
-                            else {
-                                val c2 = i2.toChar()
-                                when (c2) {
-                                    '"' -> sb2.append('"')
-                                    else -> sb2.append('\\').append(c2)
-                                }
-                                this
-                            }
-                        }
+                        '\\' -> StringFieldValueEscape
                         '"' -> {
                             builder.addValue(sb.toString(), sb2.toString())
                             sb.setLength(0)
                             sb2.setLength(0)
                             val i2 = reader.read()
-                            return if (i2 < 0) Eos
+                            if (i2 < 0) Eos
                             else when (i2.toChar()) {
                                 '\n' -> End
                                 ',' -> FieldKey
@@ -367,7 +356,32 @@ class LineProtocolParser(reader: Reader, private val failFast: Boolean = false) 
                         }
                         else -> {
                             sb2.append(c1)
-                            return this
+                            StringFieldValue
+                        }
+                    }
+                }
+            }
+
+        },
+        StringFieldValueEscape {
+
+            override fun parse(reader: PushbackReader, sb: StringBuilder, sb2: StringBuilder, builder: Point.Builder): State {
+                val i1 = reader.read()
+                return if (i1 < 0) Eos
+                else {
+                    val c1 = i1.toChar()
+                    when (c1) {
+                        '\\' -> {
+                            sb.append('\\')
+                            StringFieldValueEscape
+                        }
+                        '"' -> {
+                            sb2.append('"')
+                            StringFieldValue
+                        }
+                        else -> {
+                            sb2.append('\\').append(c1)
+                            StringFieldValue
                         }
                     }
                 }
