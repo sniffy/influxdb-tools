@@ -4,8 +4,14 @@ import io.sniffy.influxdb.lineprotocol.Point
 import java.io.*
 import java.lang.Long.parseLong
 
-class LineProtocolParser(private val reader: Reader, private val failFast: Boolean = false) :
+class LineProtocolParser(reader: Reader, private val failFast: Boolean = false) :
         Iterator<Point>, Closeable {
+
+    private val reader: PushbackReader
+
+    init {
+        this.reader = PushbackReader(reader, 1)
+    }
 
     private val sb = StringBuilder()
     private val sb2 = StringBuilder()
@@ -58,11 +64,10 @@ class LineProtocolParser(private val reader: Reader, private val failFast: Boole
         // TODO: support fail-fast
         // TODO: what about carriage return
         // TODO: what about multiple spaces
-        // TODO: what about two slashes in a row
 
         Beginning {
 
-            override fun parse(reader: Reader, sb: StringBuilder, sb2: StringBuilder, builder: Point.Builder): State {
+            override fun parse(reader: PushbackReader, sb: StringBuilder, sb2: StringBuilder, builder: Point.Builder): State {
                 val i1 = reader.read()
                 return if (i1 < 0) Eos
                 else {
@@ -71,26 +76,8 @@ class LineProtocolParser(private val reader: Reader, private val failFast: Boole
                         '#' -> Comment
                         '\n' -> Beginning
                         ',', ' ' -> ErrorInLine
-                        '\\' -> {
-                            val i2 = reader.read()
-                            if (i2 < 0) Eos
-                            else {
-                                val c2 = i2.toChar()
-                                when (c2) {
-                                    '\n' -> ErrorInLine
-                                    ',', ' ' -> {
-                                        sb.append(c2)
-                                        Measurement
-                                    }
-                                    else -> {
-                                        sb.append('\\').append(c2)
-                                        Measurement
-                                    }
-                                }
-                            }
-                        }
                         else -> {
-                            sb.append(c1)
+                            reader.unread(i1)
                             Measurement
                         }
                     }
@@ -101,7 +88,7 @@ class LineProtocolParser(private val reader: Reader, private val failFast: Boole
 
         Comment {
 
-            override fun parse(reader: Reader, sb: StringBuilder, sb2: StringBuilder, builder: Point.Builder): State {
+            override fun parse(reader: PushbackReader, sb: StringBuilder, sb2: StringBuilder, builder: Point.Builder): State {
                 val i1 = reader.read()
                 return if (i1 < 0) Eos
                 else {
@@ -117,30 +104,13 @@ class LineProtocolParser(private val reader: Reader, private val failFast: Boole
 
         Measurement {
 
-            override fun parse(reader: Reader, sb: StringBuilder, sb2: StringBuilder, builder: Point.Builder): State {
+            override fun parse(reader: PushbackReader, sb: StringBuilder, sb2: StringBuilder, builder: Point.Builder): State {
                 val i1 = reader.read()
                 return if (i1 < 0) Eos
                 else {
                     val c1 = i1.toChar()
                     when (c1) {
-                        '\\' -> {
-                            val i2 = reader.read()
-                            if (i2 < 0) Eos
-                            else {
-                                val c2 = i2.toChar()
-                                when (c2) {
-                                    '\n' -> ErrorInLine
-                                    ',', ' ' -> {
-                                        sb.append(c2)
-                                        this
-                                    }
-                                    else -> {
-                                        sb.append('\\').append(c2)
-                                        this
-                                    }
-                                }
-                            }
-                        }
+                        '\\' -> MeasurementEscape
                         '\n' -> Error
                         ',', ' ' -> {
                             val measurement = sb.toString()
@@ -163,9 +133,37 @@ class LineProtocolParser(private val reader: Reader, private val failFast: Boole
 
         },
 
+        MeasurementEscape {
+
+            override fun parse(reader: PushbackReader, sb: StringBuilder, sb2: StringBuilder, builder: Point.Builder): State {
+                val i1 = reader.read()
+                return if (i1 < 0) Eos
+                else {
+                    val c1 = i1.toChar()
+                    when (c1) {
+                        '\n' -> ErrorInLine
+                        '\\' -> {
+                            sb.append('\\')
+                            this
+                        }
+                        ',', ' ' -> {
+                            sb.append(c1)
+                            Measurement
+                        }
+                        else -> {
+                            sb.append('\\').append(c1)
+                            Measurement
+                        }
+                    }
+                }
+
+            }
+
+        },
+
         TagKey {
 
-            override fun parse(reader: Reader, sb: StringBuilder, sb2: StringBuilder, builder: Point.Builder): State {
+            override fun parse(reader: PushbackReader, sb: StringBuilder, sb2: StringBuilder, builder: Point.Builder): State {
                 val i1 = reader.read()
                 if (i1 < 0) return Eos
                 else {
@@ -207,7 +205,7 @@ class LineProtocolParser(private val reader: Reader, private val failFast: Boole
         },
         TagValue {
 
-            override fun parse(reader: Reader, sb: StringBuilder, sb2: StringBuilder, builder: Point.Builder): State {
+            override fun parse(reader: PushbackReader, sb: StringBuilder, sb2: StringBuilder, builder: Point.Builder): State {
                 val i1 = reader.read()
                 if (i1 < 0) return Eos
                 else {
@@ -258,7 +256,7 @@ class LineProtocolParser(private val reader: Reader, private val failFast: Boole
 
         FieldKey {
 
-            override fun parse(reader: Reader, sb: StringBuilder, sb2: StringBuilder, builder: Point.Builder): State {
+            override fun parse(reader: PushbackReader, sb: StringBuilder, sb2: StringBuilder, builder: Point.Builder): State {
                 val i1 = reader.read()
                 if (i1 < 0) return Eos
                 else {
@@ -300,7 +298,7 @@ class LineProtocolParser(private val reader: Reader, private val failFast: Boole
         },
         FieldValue {
 
-            override fun parse(reader: Reader, sb: StringBuilder, sb2: StringBuilder, builder: Point.Builder): State {
+            override fun parse(reader: PushbackReader, sb: StringBuilder, sb2: StringBuilder, builder: Point.Builder): State {
                 val i1 = reader.read()
                 return if (i1 < 0) Eos
                 else {
@@ -318,7 +316,7 @@ class LineProtocolParser(private val reader: Reader, private val failFast: Boole
         },
         StringFieldValue {
 
-            override fun parse(reader: Reader, sb: StringBuilder, sb2: StringBuilder, builder: Point.Builder): State {
+            override fun parse(reader: PushbackReader, sb: StringBuilder, sb2: StringBuilder, builder: Point.Builder): State {
                 val i1 = reader.read()
                 if (i1 < 0) return Eos
                 else {
@@ -360,7 +358,7 @@ class LineProtocolParser(private val reader: Reader, private val failFast: Boole
         },
         NonStringFieldValue {
 
-            override fun parse(reader: Reader, sb: StringBuilder, sb2: StringBuilder, builder: Point.Builder): State {
+            override fun parse(reader: PushbackReader, sb: StringBuilder, sb2: StringBuilder, builder: Point.Builder): State {
                 val i1 = reader.read()
                 if (i1 < 0) {
 
@@ -437,7 +435,7 @@ class LineProtocolParser(private val reader: Reader, private val failFast: Boole
 
         Timestamp {
 
-            override fun parse(reader: Reader, sb: StringBuilder, sb2: StringBuilder, builder: Point.Builder): State {
+            override fun parse(reader: PushbackReader, sb: StringBuilder, sb2: StringBuilder, builder: Point.Builder): State {
                 val i1 = reader.read()
                 if (i1 < 0) {
                     builder.timestamp = parseLong(sb.toString())
@@ -461,7 +459,7 @@ class LineProtocolParser(private val reader: Reader, private val failFast: Boole
 
         ErrorInLine {
 
-            override fun parse(reader: Reader, sb: StringBuilder, sb2: StringBuilder, builder: Point.Builder): State {
+            override fun parse(reader: PushbackReader, sb: StringBuilder, sb2: StringBuilder, builder: Point.Builder): State {
                 val i1 = reader.read()
                 return if (i1 < 0) Eos
                 else {
@@ -487,7 +485,7 @@ class LineProtocolParser(private val reader: Reader, private val failFast: Boole
 
         open fun finite() = false
 
-        open fun parse(reader: Reader, sb: StringBuilder, sb2: StringBuilder, builder: Point.Builder): State = this
+        open fun parse(reader: PushbackReader, sb: StringBuilder, sb2: StringBuilder, builder: Point.Builder): State = this
 
     }
 
