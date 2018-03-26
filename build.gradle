@@ -1,10 +1,17 @@
 group 'io.sniffy.influxdb'
 version '1.0-SNAPSHOT'
 
-apply plugin: 'java'
+buildscript {
+    repositories {
+        jcenter()
+    }
+    dependencies {
+        classpath 'com.bmuschko:gradle-nexus-plugin:2.3.1'
+    }
+}
 
-sourceCompatibility = 1.7
-
-repositories {
-    mavenCentral()
+allprojects {
+    apply plugin: 'maven'
+    apply plugin: 'signing'
+    apply plugin: 'com.bmuschko.nexus'
 }
