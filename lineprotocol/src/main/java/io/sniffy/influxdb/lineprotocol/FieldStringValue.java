@@ -12,7 +12,7 @@ public class FieldStringValue extends FieldValue {
 
     @Override
     public String toString() {
-        return value;
+        return "\"" + value.replace("\"","\\\"") + "\"";
     }
 
     @Override

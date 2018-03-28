@@ -12,7 +12,7 @@ public class FieldIntegerValue extends FieldValue {
 
     @Override
     public String toString() {
-        return Long.toString(value);
+        return Long.toString(value) + "i";
     }
 
     @Override
