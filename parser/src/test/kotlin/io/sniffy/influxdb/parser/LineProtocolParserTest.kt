@@ -28,6 +28,39 @@ internal class LineProtocolParserTest {
     }
 
     @Test
+    fun parseNoTimestamp() {
+        val parser = LineProtocolParser("weather,location=us-midwest temperature=82")
+
+        assertTrue(parser.hasNext())
+
+        val point = parser.next()
+
+        assertEquals("weather", point.measurement)
+        assertEquals(mapOf("location" to "us-midwest"), point.tags)
+        assertEquals(mapOf("temperature" to FieldFloatValue(82.0)), point.values)
+        assertNull(point.timestamp)
+
+        assertFalse(parser.hasNext())
+    }
+
+    @Test
+    fun parseNoTimestampTwoLines() {
+        val parser = LineProtocolParser("weather,location=us-midwest temperature=82\n" +
+                "weather,location=us-midwest temperature=83")
+
+        assertTrue(parser.hasNext())
+
+        val point = parser.next()
+
+        assertEquals("weather", point.measurement)
+        assertEquals(mapOf("location" to "us-midwest"), point.tags)
+        assertEquals(mapOf("temperature" to FieldFloatValue(82.0)), point.values)
+        assertNull(point.timestamp)
+
+        assertTrue(parser.hasNext())
+    }
+
+    @Test
     fun parseMultipleSpacesBeforeFields() {
         val parser = LineProtocolParser("weather,location=us-midwest   temperature=82 1465839830100400200")
 

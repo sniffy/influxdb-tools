@@ -470,7 +470,12 @@ class LineProtocolParser(reader: Reader, private val failFast: Boolean = false) 
 
                             sb.setLength(0)
                             sb2.setLength(0)
-                            return if (',' == c1) FieldKey else TimestampSeparator
+                            return when (c1) {
+                                ',' -> FieldKey
+                                ' ' -> TimestampSeparator
+                                '\n' -> End
+                                else -> ErrorInLine
+                            }
                         }
                         else -> {
                             sb2.append(c1)
