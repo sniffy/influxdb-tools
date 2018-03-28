@@ -63,7 +63,6 @@ class LineProtocolParser(reader: Reader, private val failFast: Boolean = false) 
 
         // TODO: support fail-fast
         // TODO: what about carriage return
-        // TODO: what about multiple spaces
 
         Beginning {
 
@@ -226,7 +225,7 @@ class LineProtocolParser(reader: Reader, private val failFast: Boolean = false) 
                                 ErrorInLine // TODO: skip if fail fast
                             } else {
                                 builder.addTag(tagKey, tagValue)
-                                if (',' == c1) TagKey else FieldKey
+                                if (',' == c1) TagKey else FieldKeySeparator
                             }
                         }
                         '\n' -> Error
@@ -267,6 +266,24 @@ class LineProtocolParser(reader: Reader, private val failFast: Boolean = false) 
             }
         },
 
+        FieldKeySeparator {
+
+            override fun parse(reader: PushbackReader, sb: StringBuilder, sb2: StringBuilder, builder: Point.Builder): State {
+                val i1 = reader.read()
+                return if (i1 < 0) Eos
+                else {
+                    val c1 = i1.toChar()
+                    when (c1) {
+                        ' ' -> FieldKeySeparator
+                        else -> {
+                            reader.unread(i1)
+                            FieldKey
+                        }
+                    }
+                }
+            }
+
+        },
         FieldKey {
 
             override fun parse(reader: PushbackReader, sb: StringBuilder, sb2: StringBuilder, builder: Point.Builder): State {
@@ -350,7 +367,7 @@ class LineProtocolParser(reader: Reader, private val failFast: Boolean = false) 
                             else when (i2.toChar()) {
                                 '\n' -> End
                                 ',' -> FieldKey
-                                ' ' -> Timestamp
+                                ' ' -> TimestampSeparator
                                 else -> ErrorInLine
                             }
                         }
@@ -453,7 +470,7 @@ class LineProtocolParser(reader: Reader, private val failFast: Boolean = false) 
 
                             sb.setLength(0)
                             sb2.setLength(0)
-                            return if (',' == c1) FieldKey else Timestamp
+                            return if (',' == c1) FieldKey else TimestampSeparator
                         }
                         else -> {
                             sb2.append(c1)
@@ -465,6 +482,24 @@ class LineProtocolParser(reader: Reader, private val failFast: Boolean = false) 
 
         },
 
+        TimestampSeparator {
+
+            override fun parse(reader: PushbackReader, sb: StringBuilder, sb2: StringBuilder, builder: Point.Builder): State {
+                val i1 = reader.read()
+                return if (i1 < 0) Eos
+                else {
+                    val c1 = i1.toChar()
+                    when (c1) {
+                        ' ' -> TimestampSeparator
+                        else -> {
+                            reader.unread(i1)
+                            Timestamp
+                        }
+                    }
+                }
+            }
+
+        },
         Timestamp {
 
             override fun parse(reader: PushbackReader, sb: StringBuilder, sb2: StringBuilder, builder: Point.Builder): State {
