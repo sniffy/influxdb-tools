@@ -12,7 +12,10 @@ public class FieldFloatValue extends FieldValue {
 
     @Override
     public String toString() {
-        return Double.toString(value);
+        if(value == (long) value)
+            return String.format("%d", (long) value);
+        else
+            return String.format("%s", value);
     }
 
     @Override

@@ -1,5 +1,6 @@
 package io.sniffy.influxdb.lineprotocol;
 
+import java.io.*;
 import java.math.BigDecimal;
 import java.util.Collections;
 import java.util.HashMap;
@@ -35,6 +36,54 @@ public class Point {
         return timestamp;
     }
 
+    @Override
+    public String toString() {
+        StringWriter sw = new StringWriter();
+        try {
+            writeTo(sw);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+        return sw.toString();
+    }
+
+    public void writeTo(OutputStream outputStream) throws IOException {
+        writeTo(new OutputStreamWriter(outputStream));
+    }
+
+    public void writeTo(Writer writer) throws IOException {
+        writer.write(measurement.replace(" ", "\\ ").replace(",", "\\,"));
+
+        if (null != tags && !tags.isEmpty()) {
+            for (Map.Entry<String, String> entry : tags.entrySet()) {
+                writer.write(",");
+                writer.write(entry.getKey().replace(" ", "\\ ").replace(",", "\\,").replace("=", "\\="));
+                writer.write("=");
+                writer.write(entry.getValue().replace(" ", "\\ ").replace(",", "\\,").replace("=", "\\="));
+            }
+        }
+
+        writer.write(" ");
+
+        boolean fieldSeparatorRequired = false;
+
+        for (Map.Entry<String, FieldValue> entry : values.entrySet()) {
+            if (fieldSeparatorRequired) {
+                writer.write(",");
+            }
+            writer.write(entry.getKey().replace(" ", "\\ ").replace(",", "\\,").replace("=", "\\="));
+            writer.write("=");
+            writer.write(entry.getValue().toString());
+            fieldSeparatorRequired = true;
+        }
+
+        if (null != timestamp) {
+            writer.write(" ");
+            writer.write(timestamp.toString());
+        }
+
+    }
+
     public static class Builder {
 
         private final boolean validate;
@@ -60,6 +109,11 @@ public class Point {
             this.measurement = measurement;
         }
 
+        public Builder measurement(String measurement) {
+            setMeasurement(measurement);
+            return this;
+        }
+
         public Map<String, String> getTags() {
             return tags;
         }
@@ -69,12 +123,14 @@ public class Point {
             addTags(tags);
         }
 
-        public void addTag(String key, String value) {
+        public Builder addTag(String key, String value) {
             tags.put(key, value);
+            return this;
         }
 
-        public void addTags(Map<String, String> tags) {
-            tags.putAll(tags);
+        public Builder addTags(Map<String, String> tags) {
+            this.tags.putAll(tags);
+            return this;
         }
 
         public Map<String, FieldValue> getValues() {
@@ -86,48 +142,59 @@ public class Point {
             addValues(values);
         }
 
-        public void addValue(String key, FieldValue value) {
+        public Builder addValue(String key, FieldValue value) {
             this.values.put(key, value);
+            return this;
         }
 
-        public void addValue(String key, String value) {
+        public Builder addValue(String key, String value) {
             this.values.put(key, new FieldStringValue(value));
+            return this;
         }
 
-        public void addValue(String key, float value) {
+        public Builder addValue(String key, float value) {
             addValue(key, (double) value);
+            return this;
         }
 
-        public void addValue(String key, BigDecimal value) {
+        public Builder addValue(String key, BigDecimal value) {
             addValue(key, value.doubleValue());
+            return this;
         }
 
-        public void addValue(String key, double value) {
+        public Builder addValue(String key, double value) {
             this.values.put(key, new FieldFloatValue(value));
+            return this;
         }
 
-        public void addValue(String key, int value) {
+        public Builder addValue(String key, int value) {
             addValue(key, (long) value);
+            return this;
         }
 
-        public void addValue(String key, short value) {
+        public Builder addValue(String key, short value) {
             addValue(key, (long) value);
+            return this;
         }
 
-        public void addValue(String key, byte value) {
+        public Builder addValue(String key, byte value) {
             addValue(key, (long) value);
+            return this;
         }
 
-        public void addValue(String key, long value) {
+        public Builder addValue(String key, long value) {
             this.values.put(key, new FieldIntegerValue(value));
+            return this;
         }
 
-        public void addValue(String key, boolean value) {
+        public Builder addValue(String key, boolean value) {
             this.values.put(key, new FieldBooleanValue(value));
+            return this;
         }
 
-        public void addValues(Map<String, FieldValue> values) {
+        public Builder addValues(Map<String, FieldValue> values) {
             this.values.putAll(values);
+            return this;
         }
 
         public Long getTimestamp() {
@@ -136,6 +203,11 @@ public class Point {
 
         public void setTimestamp(Long timestamp) {
             this.timestamp = timestamp;
+        }
+
+        public Builder timestamp(Long timestamp) {
+            setTimestamp(timestamp);
+            return this;
         }
 
         public Point build() {
