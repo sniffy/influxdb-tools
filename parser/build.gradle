@@ -1,5 +1,5 @@
 group 'io.sniffy.influxdb'
-version '0.0.1'
+version '0.0.2'
 
 buildscript {
     ext.kotlin_version = '1.2.30'
@@ -32,6 +32,7 @@ dependencies {
 
     testCompile "org.junit.jupiter:junit-jupiter-api:$junitVersion"
     testCompile "org.junit.jupiter:junit-jupiter-params:$junitVersion"
+    testCompile "ru.yandex.qatools.allure:allure-java-annotations:1.5.1"
 
     runtime "org.junit.jupiter:junit-jupiter-engine:$junitVersion"
     runtime "org.junit.platform:junit-platform-console:$junitPlatformVersion"

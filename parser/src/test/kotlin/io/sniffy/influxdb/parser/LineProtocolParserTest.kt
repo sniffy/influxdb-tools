@@ -6,6 +6,7 @@ import io.sniffy.influxdb.lineprotocol.FieldIntegerValue
 import io.sniffy.influxdb.lineprotocol.FieldStringValue
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
+import ru.yandex.qatools.allure.annotations.Issue
 
 internal class LineProtocolParserTest {
 
@@ -598,6 +599,78 @@ internal class LineProtocolParserTest {
             assertEquals(mapOf("temperature" to FieldStringValue("8\"2")), point.values)
             assertEquals(1465839830100400200, point.timestamp)
 
+            assertFalse(parser.hasNext())
+        }
+    }
+
+    @Test
+    @Issue("https://github.com/sniffy/influxdb-tools/issues/1")
+    fun parseOneLineEscapedStringFieldValueWithManyEscapeCharacters() {
+        run {
+            val line = "measurement,location=us-midwest temperature=\"8\\\"2\" 1465839830100400200"
+            val parser = LineProtocolParser(line)
+            assertTrue(parser.hasNext())
+
+            val point = parser.next()
+
+            assertEquals("measurement", point.measurement)
+            assertEquals(mapOf("location" to "us-midwest"), point.tags)
+            assertEquals(mapOf("temperature" to FieldStringValue("8\"2")), point.values)
+            assertEquals(1465839830100400200, point.timestamp)
+
+            assertFalse(parser.hasNext())
+
+            assertEquals(line, point.toString())
+        }
+        run {
+            val parser = LineProtocolParser("measurement,location=us-midwest temperature=\"8\\\\\"2\" 1465839830100400200")
+            assertTrue(parser.hasNext())
+
+            val point = parser.next()
+
+            assertEquals("measurement", point.measurement)
+            assertEquals(mapOf("location" to "us-midwest"), point.tags)
+            assertEquals(mapOf("temperature" to FieldStringValue("8\\")), point.values)
+
+            assertFalse(parser.hasNext())
+
+            assertEquals("measurement,location=us-midwest temperature=\"8\\\\\"", point.toString())
+        }
+        run {
+            val parser = LineProtocolParser("measurement,location=us-midwest temperature=\"8\\\\\"2\" 1465839830100400200", true)
+            assertFalse(parser.hasNext())
+        }
+        run {
+            val parser = LineProtocolParser("measurement,location=us-midwest temperature=\"8\\\\\\\"2\" 1465839830100400200")
+            assertTrue(parser.hasNext())
+
+            val point = parser.next()
+
+            assertEquals("measurement", point.measurement)
+            assertEquals(mapOf("location" to "us-midwest"), point.tags)
+            assertEquals(mapOf("temperature" to FieldStringValue("8\\\"2")), point.values)
+            assertEquals(1465839830100400200, point.timestamp)
+
+            assertFalse(parser.hasNext())
+
+            assertEquals("measurement,location=us-midwest temperature=\"8\\\\\\\"2\" 1465839830100400200", point.toString())
+        }
+        run {
+            val parser = LineProtocolParser("measurement,location=us-midwest temperature=\"8\\\\\\\\\"2\" 1465839830100400200")
+            assertTrue(parser.hasNext())
+
+            val point = parser.next()
+
+            assertEquals("measurement", point.measurement)
+            assertEquals(mapOf("location" to "us-midwest"), point.tags)
+            assertEquals(mapOf("temperature" to FieldStringValue("8\\\\")), point.values)
+
+            assertFalse(parser.hasNext())
+
+            assertEquals("measurement,location=us-midwest temperature=\"8\\\\\\\\\"", point.toString())
+        }
+        run {
+            val parser = LineProtocolParser("measurement,location=us-midwest temperature=\"8\\\\\\\\\"2\" 1465839830100400200", true)
             assertFalse(parser.hasNext())
         }
     }

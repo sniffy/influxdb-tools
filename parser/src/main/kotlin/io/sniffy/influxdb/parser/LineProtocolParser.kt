@@ -19,9 +19,11 @@ class LineProtocolParser(reader: Reader, private val failFast: Boolean = false) 
     private var nextPoint: Point? = null
     private var state = State.Beginning
 
+    @JvmOverloads
     constructor(string: String, failFast: Boolean = false) :
             this(StringReader(string), failFast)
 
+    @JvmOverloads
     constructor(inputStream: InputStream, failFast: Boolean = false) :
             this(InputStreamReader(inputStream, Charsets.UTF_8), failFast)
 
@@ -55,7 +57,7 @@ class LineProtocolParser(reader: Reader, private val failFast: Boolean = false) 
 
         while (!state.finite()) state = state.parse(reader, sb, sb2, builder)
 
-        return builder.build()
+        return if (state == State.Error && failFast) null else builder.build()
 
     }
 
@@ -389,8 +391,8 @@ class LineProtocolParser(reader: Reader, private val failFast: Boolean = false) 
                     val c1 = i1.toChar()
                     when (c1) {
                         '\\' -> {
-                            sb.append('\\')
-                            StringFieldValueEscape
+                            sb2.append('\\')
+                            StringFieldValue
                         }
                         '"' -> {
                             sb2.append('"')
@@ -533,7 +535,7 @@ class LineProtocolParser(reader: Reader, private val failFast: Boolean = false) 
 
             override fun parse(reader: PushbackReader, sb: StringBuilder, sb2: StringBuilder, builder: Point.Builder): State {
                 val i1 = reader.read()
-                return if (i1 < 0) Eos
+                return if (i1 < 0) Error
                 else {
                     val c1 = i1.toChar()
                     when (c1) {
