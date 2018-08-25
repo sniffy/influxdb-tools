@@ -31,4 +31,24 @@ public class FieldFloatValue extends FieldValue {
         return Objects.hash(value);
     }
 
+    @Override
+    public boolean asBoolean() {
+        return Math.signum(value) != 0;
+    }
+
+    @Override
+    public long asLong() {
+        return (long) value;
+    }
+
+    @Override
+    public double asDouble() {
+        return value;
+    }
+
+    @Override
+    public String asString() {
+        return Double.toString(value);
+    }
+
 }

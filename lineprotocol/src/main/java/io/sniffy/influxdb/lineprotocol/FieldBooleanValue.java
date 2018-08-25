@@ -28,4 +28,24 @@ public class FieldBooleanValue extends FieldValue {
         return Objects.hash(value);
     }
 
+    @Override
+    public boolean asBoolean() {
+        return value;
+    }
+
+    @Override
+    public long asLong() {
+        return value ? 1 : 0;
+    }
+
+    @Override
+    public double asDouble() {
+        return value ? 1 : 0;
+    }
+
+    @Override
+    public String asString() {
+        return Boolean.toString(value);
+    }
+
 }

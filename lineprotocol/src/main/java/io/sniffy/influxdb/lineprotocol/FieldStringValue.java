@@ -28,4 +28,36 @@ public class FieldStringValue extends FieldValue {
         return Objects.hash(value);
     }
 
+    @Override
+    public boolean asBoolean() {
+        return Boolean.parseBoolean(value);
+    }
+
+    @Override
+    public long asLong() {
+        try {
+            if (value.contains(".")) {
+                return (long) asDouble();
+            } else {
+                return Long.parseLong(value);
+            }
+        } catch (NumberFormatException e) {
+            return 0;
+        }
+    }
+
+    @Override
+    public double asDouble() {
+        try {
+            return Double.parseDouble(value);
+        } catch (NumberFormatException e) {
+            return 0.;
+        }
+    }
+
+    @Override
+    public String asString() {
+        return value;
+    }
+
 }

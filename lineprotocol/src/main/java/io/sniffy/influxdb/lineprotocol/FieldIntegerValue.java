@@ -28,4 +28,24 @@ public class FieldIntegerValue extends FieldValue {
         return Objects.hash(value);
     }
 
+    @Override
+    public boolean asBoolean() {
+        return value != 0;
+    }
+
+    @Override
+    public long asLong() {
+        return value;
+    }
+
+    @Override
+    public double asDouble() {
+        return value;
+    }
+
+    @Override
+    public String asString() {
+        return Long.toString(value);
+    }
+
 }
